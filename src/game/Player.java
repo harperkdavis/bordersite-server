@@ -34,6 +34,24 @@ public class Player {
 
     }
 
+    public byte[] getSpawnPacket() {
+        byte[] playerBytes = new byte[1024];
+
+        playerBytes[0] = (byte) 48;
+        playerBytes[1] = (byte) 52;
+
+        byte[] playerIdBytes = ByteUtil.intToBytes(playerId);
+
+        playerBytes[2] = playerIdBytes[2];
+        playerBytes[3] = playerIdBytes[3];
+
+        byte[] usernameBytes = username.getBytes();
+
+        System.arraycopy(usernameBytes, 0, playerBytes, 4, usernameBytes.length);
+
+        return playerBytes;
+    }
+
     public byte[] toBytes() {
         byte[] playerBytes = new byte[1024];
 

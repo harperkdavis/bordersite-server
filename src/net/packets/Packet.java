@@ -5,7 +5,7 @@ import net.Server;
 public abstract class Packet {
 
     public static enum PacketType {
-        INVALID(-1), CONNECT(0), DISCONNECT(1), PLAYERDATA(2), INPUTS(3);
+        INVALID(-1), CONNECT(0), DISCONNECT(1), PLAYERDATA(2), INPUTS(3), PLAYERSPAWN(4), PLAYERDELETE(5);
 
         private int packetId;
 
