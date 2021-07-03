@@ -1,0 +1,16 @@
+{
+  "weapons": [
+    {
+      "weaponId": 0,
+      "name": "KM2000",
+      "fullName": "KM2000 Combat Knife",
+      "type": "melee",
+      "fireType": "s",
+      "cost": 0,
+      "magazineSize": 0,
+      "fireRate": 0,
+      "recoil": 0,
+      "damage": [0, 0, 0, 0]
+    }
+  ]
+}
