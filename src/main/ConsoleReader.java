@@ -1,6 +1,7 @@
 package main;
 
 import com.google.gson.internal.$Gson$Preconditions;
+import engine.game.NetPlayer;
 import engine.game.Player;
 import net.ServerHandler;
 
@@ -39,10 +40,10 @@ public class ConsoleReader implements Runnable {
         if (command.equalsIgnoreCase("stop")) {
             Main.setRunning(false);
             Main.getServerThread().interrupt();
-            Main.getServer().stop();
+            ServerHandler.getServer().stop();
             return;
         } else if (command.equalsIgnoreCase("info") && args.length > 0) {
-            Player player = ServerHandler.getPlayer(Integer.parseInt(args[0]));
+            NetPlayer player = ServerHandler.getPlayer(Integer.parseInt(args[0]));
             if (player != null) {
                 System.out.println("--- " + player.getUsername() + " --- UUID " + player.getUuid() + " --- PlayerId " + player.getPlayerId() + " ---");
                 System.out.println("Ip: " + player.getIpAddress() + ":" + player.getPort());
