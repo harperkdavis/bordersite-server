@@ -2,6 +2,7 @@ package main;
 
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
+import engine.map.MapLevel;
 import net.ServerHandler;
 
 public class Main implements Runnable {
@@ -35,6 +36,7 @@ public class Main implements Runnable {
         Log.set(Log.LEVEL_TRACE);
 
         ServerHandler.start();
+        MapLevel.loadMap();
 
         updateMillisecond = System.currentTimeMillis();
 
@@ -73,6 +75,10 @@ public class Main implements Runnable {
 
     public static void setRunning(boolean running) {
         Main.running = running;
+    }
+
+    public static float getDeltaTime() {
+        return 1 / 120.0f;
     }
 
 }

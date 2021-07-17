@@ -11,6 +11,7 @@ import net.packets.Packet;
 import net.packets.client.ChatRequestPacket;
 import net.packets.client.ConnectPacket;
 import net.packets.client.TeamSelectPacket;
+import net.packets.client.UserInputPacket;
 import net.packets.server.*;
 
 import java.io.IOException;
@@ -49,6 +50,9 @@ public class ServerHandler {
         kryo.register(PlayerRemovePacket.class);
         kryo.register(PlayerSpawnPacket.class);
         kryo.register(WorldSpawnPacket.class);
+
+        kryo.register(InputSnapshot.class);
+        kryo.register(UserInputPacket.class);
 
         try {
             server.bind(27555, 27777);
