@@ -4,25 +4,22 @@ import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
 import engine.map.MapLevel;
 import net.ServerHandler;
+import net.ServerTick;
 
-public class Main implements Runnable {
+import java.util.Timer;
 
-    private static Thread serverThread, consoleThread;
-    private ConsoleReader consoleReader;
+public class Main {
+
+    private static Thread consoleThread;
+    private static ConsoleReader consoleReader;
     private static boolean running = true;
 
-    private static long updateMillisecond;
-    int tick = 0;
+    private static Timer tickTimer;
+    private static ServerTick serverTick;
+    private static final float DELTA_TIME = 2.0f / 1000.0f;
 
     public static void main(String[] args) {
-        new Main().start();
-    }
-
-    public void start() {
         System.out.println("[INFO] Starting server...");
-
-        serverThread = new Thread(this);
-        serverThread.start();
 
         consoleReader = new ConsoleReader();
 
@@ -32,33 +29,26 @@ public class Main implements Runnable {
         init();
     }
 
-    private void init() {
+    public static void start() {
+        tickTimer = new Timer();
+        serverTick = new ServerTick();
+        tickTimer.scheduleAtFixedRate(serverTick, 0, 2);
+    }
+
+    public static void stop() {
+        tickTimer.cancel();
+        tickTimer.purge();
+    }
+
+    private static void init() {
         Log.set(Log.LEVEL_TRACE);
 
         ServerHandler.start();
         MapLevel.loadMap();
 
-        updateMillisecond = System.currentTimeMillis();
+        start();
 
         System.out.println("[INFO] Server started!");
-    }
-
-    @Override
-    public void run() {
-        while (running) {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                System.out.println("[INFO] Thread interrupted, Stopping server...");
-                running = false;
-            }
-            ServerHandler.timeStep();
-        }
-        System.out.println("[INFO] Server stopped");
-    }
-
-    public static Thread getServerThread() {
-        return serverThread;
     }
 
     public static Thread getConsoleThread() {
@@ -78,7 +68,7 @@ public class Main implements Runnable {
     }
 
     public static float getDeltaTime() {
-        return 1 / 120.0f;
+        return DELTA_TIME;
     }
 
 }

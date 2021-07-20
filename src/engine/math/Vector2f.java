@@ -19,6 +19,10 @@ public class Vector2f {
         this.y = other.getY();
     }
 
+    public Vector2f() {
+        this(0, 0);
+    }
+
     public float getX() {
         return x;
     }

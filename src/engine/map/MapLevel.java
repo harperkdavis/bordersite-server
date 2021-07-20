@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class MapLevel {
 
-    private static List<Component> components = new ArrayList<>();
+    public static List<Component> components = new ArrayList<>();
     private static Vector3f redSpawn, blueSpawn;
     private static final String MAP = "atnitz";
 

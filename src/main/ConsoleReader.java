@@ -39,7 +39,7 @@ public class ConsoleReader implements Runnable {
 
         if (command.equalsIgnoreCase("stop")) {
             Main.setRunning(false);
-            Main.getServerThread().interrupt();
+            Main.stop();
             ServerHandler.getServer().stop();
             return;
         } else if (command.equalsIgnoreCase("info") && args.length > 0) {

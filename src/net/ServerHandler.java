@@ -4,8 +4,10 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
-import engine.game.NetPlayer;
-import engine.game.Player;
+import com.esotericsoftware.minlog.Log;
+import engine.game.*;
+import engine.math.Vector2f;
+import engine.math.Vector3f;
 import main.Main;
 import net.packets.Packet;
 import net.packets.client.ChatRequestPacket;
@@ -25,9 +27,10 @@ public class ServerHandler {
     private final static Map<Integer, NetPlayer> players = new HashMap<>();
     private static Server server;
     private static int nextPlayerId = 0;
-    private static int tick = 0;
 
     public static void start() {
+        Log.set(Log.LEVEL_TRACE);
+
         server = new Server();
         server.start();
 
@@ -36,6 +39,9 @@ public class ServerHandler {
         kryo.register(List.class);
         kryo.register(ArrayList.class);
         kryo.register(HashMap.class);
+
+        kryo.register(Vector3f.class);
+        kryo.register(Vector2f.class);
 
         kryo.register(Player.class);
 
@@ -53,6 +59,9 @@ public class ServerHandler {
 
         kryo.register(InputSnapshot.class);
         kryo.register(UserInputPacket.class);
+
+        kryo.register(WorldState.class);
+        kryo.register(WorldStatePacket.class);
 
         try {
             server.bind(27555, 27777);
@@ -87,15 +96,42 @@ public class ServerHandler {
         });
     }
 
-    public static void timeStep() {
-        tick++;
-    }
-
     public static NetPlayer addPlayer(String ip, int port, int kryoId, String username) {
         NetPlayer newPlayer = new NetPlayer(ip, port, nextPlayerId, kryoId, username);
         players.put(nextPlayerId, newPlayer);
         nextPlayerId ++;
         return newPlayer;
+    }
+
+    public static void executeSubtick(int subtick) {
+        for (NetPlayer netPlayer : players.values()) {
+            int inputSize = netPlayer.getInputHistory().size();
+            if (inputSize <= subtick) {
+                for (int i = inputSize; i <= subtick; i++) {
+                    netPlayer.setOrAddInput(i, netPlayer.getMostRecentSnapshot());
+                }
+            }
+        }
+    }
+
+    public static void executeTick(int tick) {
+        // Inputs
+        for (NetPlayer netPlayer : players.values()) {
+            netPlayer.addTickInputs();
+        }
+        // Players
+        for (int s = 0; s < 10; s++) { // Subtick Step
+            for (NetPlayer netPlayer : players.values()) {
+                PlayerMovement.updateMovement(netPlayer, s);
+            }
+        }
+
+        WorldStatePacket worldStatePacket = new WorldStatePacket(WorldState.createWorldState());
+        for (NetPlayer player : players.values()) {
+            if (player.isRegistered()) {
+                player.sendPacketUDP(worldStatePacket);
+            }
+        }
     }
 
     public static NetPlayer getPlayer(int playerId) {
@@ -151,8 +187,7 @@ public class ServerHandler {
         return server;
     }
 
-    public static int getTick() {
-        return tick;
+    public static Map<Integer, NetPlayer> getPlayerMap() {
+        return players;
     }
-
 }
