@@ -178,7 +178,7 @@ public class Vector2f {
     }
 
     public static float distance(Vector2f a, Vector2f b) {
-        return (float) Math.sqrt(Math.pow(a.x + b.x, 2) + Math.pow(a.y + b.y, 2));
+        return (float) Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
     }
 
     public static float dot(Vector2f a, Vector2f b) {

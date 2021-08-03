@@ -167,7 +167,7 @@ public class Vector3f {
     }
 
     public float magnitude() {
-        return (float) Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2));
+        return (float)Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2));
     }
 
     public Vector3f normalized() {
@@ -189,6 +189,18 @@ public class Vector3f {
 
     public static float dot(Vector3f a, Vector3f b) {
         return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
+    public static Vector3f lerp(Vector3f a, Vector3f b, float c) {
+        return new Vector3f(Mathf.lerp(a.getX(), b.getX(), c), Mathf.lerp(a.getY(), b.getY(), c), Mathf.lerp(a.getZ(), b.getZ(), c));
+    }
+
+    public static Vector3f lerpdt(Vector3f a, Vector3f b, float c) {
+        return new Vector3f(Mathf.lerpdt(a.getX(), b.getX(), c), Mathf.lerpdt(a.getY(), b.getY(), c), Mathf.lerpdt(a.getZ(), b.getZ(), c));
+    }
+
+    public static float distance(Vector3f a, Vector3f b) {
+        return (float) Math.sqrt(Math.pow(a.getX() - b.getX(), 2) + Math.pow(a.getY() - b.getY(), 2) + Math.pow(a.getZ() - b.getZ(), 2));
     }
 
     public Vector3f copy() {

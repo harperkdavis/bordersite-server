@@ -1,6 +1,9 @@
 package engine.game;
 
 import engine.math.Vector3f;
+import net.ServerHandler;
+import net.packets.event.DeathEvent;
+import net.packets.event.HitEvent;
 
 import java.util.UUID;
 
@@ -11,19 +14,33 @@ public class Player {
 
     private String username;
 
+    private float ping = 0;
+
     private int team = 0;
+    private int kills = 0;
     private boolean registered = false;
     private int inputSequence = 0;
 
+    private int forceMoveTicks = 0;
+
     // MOVEMENT
-    protected Vector3f position = new Vector3f(0, 1.5f, 0);
+    protected Vector3f position = Vector3f.oneY();
     protected Vector3f rotation = Vector3f.zero();
 
-    protected boolean grounded = false, crouching = false, sprinting = false, moving = false;
-    protected float velX = 0, velY = 0, velZ = 0;
-    protected float velocityLeft = 0, velocityRight = 0, velocityForward = 0, velocityBack = 0;
-    protected float sprintModifier = 0;
-    protected float playerHeight = 1.5f;
+    protected boolean grounded, crouching, sprinting, moving, aiming;
+    protected float velX, velY, velZ;
+    protected float velocityLeft, velocityRight, velocityForward, velocityBack;
+    protected float sprintModifier, crouchModifier;
+    protected float playerHeight;
+
+    // GUNPLAY
+
+    private float health = 200;
+    private int ammo = 30;
+    private float reloadTime = 0, lastShot = 0;
+    private boolean dead = false;
+    private float deathTimer = 0;
+    private Player killer = null;
 
     public Player(int playerId, String username) {
         this.playerId = playerId;
@@ -65,6 +82,14 @@ public class Player {
         this.registered = registered;
     }
 
+    public int getInputSequence() {
+        return inputSequence;
+    }
+
+    public void setInputSequence(int inputSequence) {
+        this.inputSequence = inputSequence;
+    }
+
     public Vector3f getPosition() {
         return position;
     }
@@ -79,6 +104,10 @@ public class Player {
 
     public boolean isSprinting() {
         return sprinting;
+    }
+
+    public boolean isAiming() {
+        return aiming;
     }
 
     public float getVelX() {
@@ -97,8 +126,8 @@ public class Player {
         return sprintModifier;
     }
 
-    public Vector3f getRotation() {
-        return rotation;
+    public float getCrouchModifier() {
+        return crouchModifier;
     }
 
     public boolean isMoving() {
@@ -121,53 +150,180 @@ public class Player {
         return velocityBack;
     }
 
+    public Vector3f getRotation() {
+        return rotation;
+    }
+
     public float getPlayerHeight() {
         return playerHeight;
     }
 
-    public void printData() {
-        System.out.println("Player Info Dump");
-        System.out.println("Id: " + playerId);
-        System.out.println("UUID: " + uuid);
-        System.out.println("Username: " + username);
+    public float getHealth() {
+        return health;
+    }
 
-        System.out.println("Team: " + team);
-        System.out.println("Registered: " + registered);
+    public int getAmmo() {
+        return ammo;
+    }
 
-        System.out.println("Grounded: " + grounded);
-        System.out.println("Crouching: " + crouching);
-        System.out.println("Sprinting: " + sprinting);
-        System.out.println("Moving: " + moving);
+    public float getReloadTime() {
+        return reloadTime;
+    }
 
-        System.out.println("VelX: " + velX);
-        System.out.println("VelY: " + velY);
-        System.out.println("VelZ: " + velZ);
+    public boolean isDead() {
+        return dead;
+    }
 
-        System.out.println("VelLeft: " + velocityLeft);
-        System.out.println("VelRight: " + velocityRight);
-        System.out.println("VelForward: " + velocityForward);
-        System.out.println("VelBack: " + velocityBack);
+    public float getLastShot() {
+        return lastShot;
+    }
 
-        System.out.println("SprintModifier: " + sprintModifier);
-        System.out.println("Height: " + playerHeight);
+    public float getPing() {
+        return ping;
+    }
 
-        System.out.println("Rotation: " + rotation);
-        System.out.println("Position: " + position);
+    public void setHealth(float health) {
+        this.health = health;
+    }
+
+    public void setAmmo(int ammo) {
+        this.ammo = ammo;
+    }
+
+    public void setReloadTime(float reloadTime) {
+        this.reloadTime = reloadTime;
+    }
+
+    public void setLastShot(float lastShot) {
+        this.lastShot = lastShot;
+    }
+
+    public void setPing(float ping) {
+        this.ping = ping;
+    }
+
+    public void setDead(boolean dead) {
+        this.dead = dead;
+    }
+
+    public float getDeathTimer() {
+        return deathTimer;
+    }
+
+    public void setDeathTimer(float deathTimer) {
+        this.deathTimer = deathTimer;
+    }
+
+    public boolean isForceMove() {
+        return forceMoveTicks > 0;
+    }
+
+    public void setForceMoveTicks(int forceMove) {
+        this.forceMoveTicks = forceMove;
+    }
+
+    public void decreaseForceMoveTicks() {
+        this.forceMoveTicks--;
+    }
+
+    public Player getKiller() {
+        return killer;
+    }
+
+    public void setKiller(Player killer) {
+        this.killer = killer;
+    }
+
+    public int getKills() {
+        return kills;
+    }
+
+    public void setKills(int kills) {
+        this.kills = kills;
+    }
+
+    public void addKill() {
+        this.kills++;
+    }
+
+    public void teleport(Vector3f position) {
+        this.position = position;
+        this.rotation = Vector3f.zero();
+        this.forceMoveTicks = 3;
+        this.velX = 0;
+        this.velY = 0;
+        this.velZ = 0;
+    }
+
+    public void teleport(Vector3f position, Vector3f rotation) {
+        this.position = position;
+        this.rotation = rotation;
+        this.forceMoveTicks = 3;
+        this.velX = 0;
+        this.velY = 0;
+        this.velZ = 0;
+    }
+
+    public void damage(HitEvent hitEvent) {
+        if (this.isDead()) {
+            return;
+        }
+        this.health -= hitEvent.getDamage();
+        if (this.health <= 0) {
+            kill(hitEvent);
+        }
+    }
+
+    public void kill(HitEvent hitEvent) {
+        deathTimer = 10.0f;
+        dead = true;
+        health = 0;
+        this.killer = hitEvent.getSource().copy();
+        ServerHandler.getPlayer(hitEvent.getSource().getPlayerId()).getPlayer().addKill();
+
+        int scoreAdd = 100 + (hitEvent.isHeadshot() ? 50 : 0) + (hitEvent.getDistance() > 40 ? 50 : 0);
+        String deathMessage = username + " was " + (hitEvent.isHeadshot() ? "headshot" : "killed") + " by " + hitEvent.getSource().getUsername() + " (" + Math.round(hitEvent.getDistance() * 10) / 10.0f + "m) +" + scoreAdd + " score";
+
+        if (hitEvent.getSource().getTeam() == 0) {
+            GameHandler.redScore += scoreAdd;
+            ServerHandler.broadcastMessage(deathMessage, ServerHandler.DARK_RED_COLOR);
+        } else {
+            GameHandler.blueScore += scoreAdd;
+            ServerHandler.broadcastMessage(deathMessage, ServerHandler.DARK_BLUE_COLOR);
+        }
+        DeathEvent deathEvent = new DeathEvent(this, hitEvent.getSource(), hitEvent.getDistance(), hitEvent.isHeadshot(), hitEvent.getSubtick());
+        ServerHandler.addEvent(deathEvent);
+    }
+
+    public void respawn(Vector3f position, Vector3f rotation) {
+        teleport(position, rotation);
+        this.dead = false;
+        this.health = 200;
+        this.deathTimer = -1;
+        this.ammo = 30;
+        this.killer = null;
     }
 
     public Player copy() {
         Player copy = new Player(playerId, username);
         copy.playerId = playerId;
-        copy.uuid = "" + uuid;
-        copy.username = "" + username;
+        copy.uuid = uuid;
+        copy.username = username;
 
         copy.team = team;
         copy.registered = registered;
+        copy.inputSequence = inputSequence;
+
+        copy.forceMoveTicks = forceMoveTicks;
+
+        copy.position = position.copy();
+        copy.rotation = rotation.copy();
 
         copy.grounded = grounded;
         copy.crouching = crouching;
         copy.sprinting = sprinting;
         copy.moving = moving;
+        copy.aiming = aiming;
 
         copy.velX = velX;
         copy.velY = velY;
@@ -179,10 +335,20 @@ public class Player {
         copy.velocityBack = velocityBack;
 
         copy.sprintModifier = sprintModifier;
+        copy.crouchModifier = crouchModifier;
+        copy.rotation = rotation;
         copy.playerHeight = playerHeight;
 
-        copy.rotation = rotation.copy();
-        copy.position = position.copy();
+        copy.health = health;
+        copy.ammo = ammo;
+        copy.dead = dead;
+        copy.kills = kills;
+
+        copy.deathTimer = deathTimer;
+        copy.reloadTime = reloadTime;
+        copy.lastShot = lastShot;
+        copy.ping = ping;
+        copy.killer = killer;
 
         return copy;
     }

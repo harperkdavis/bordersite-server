@@ -2,6 +2,10 @@ package engine.math;
 
 import main.Main;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 public class Mathf {
 
     public static float lerp(float a, float b, float f) {
@@ -39,7 +43,7 @@ public class Mathf {
     }
 
     public static float distance(float x1, float y1, float x2, float y2) {
-        return (float) Math.sqrt(Math.pow(x1 - y1, 2) + Math.pow(x2 - y2, 2));
+        return (float) Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
     }
 
     public static boolean lineCircle(float x1, float y1, float x2, float y2, float cx, float cy, float r) {
@@ -116,4 +120,68 @@ public class Mathf {
         boolean checkSide3 = side(p3, p1, p) >= 0;
         return checkSide1 && checkSide2 && checkSide3;
     }
+
+    public static List<Vector2f> circleLinePoints(Vector2f pointA, Vector2f pointB, Vector2f center, float radius) {
+        float baX = pointB.getX() - pointA.getX();
+        float baY = pointB.getY() - pointA.getY();
+        float caX = center.getX() - pointA.getX();
+        float caY = center.getY() - pointA.getY();
+
+        float a = baX * baX + baY * baY;
+        float bBy2 = baX * caX + baY * caY;
+        float c = caX * caX + caY * caY - radius * radius;
+
+        float pBy2 = bBy2 / a;
+        float q = c / a;
+
+        float disc = pBy2 * pBy2 - q;
+        if (disc < 0) {
+            return Collections.emptyList();
+        }
+
+        float tmpSqrt = (float) Math.sqrt(disc);
+        float abScalingFactor1 = -pBy2 + tmpSqrt;
+        float abScalingFactor2 = -pBy2 - tmpSqrt;
+
+        Vector2f p1 = new Vector2f(pointA.getX() - baX * abScalingFactor1, pointA.getY() - baY * abScalingFactor1);
+        if (disc == 0) {
+            return Collections.singletonList(p1);
+        }
+        Vector2f p2 = new Vector2f(pointA.getX() - baX * abScalingFactor2, pointA.getY() - baY * abScalingFactor2);
+        return Arrays.asList(p1, p2);
+    }
+
+    public static Vector2f circleLineAverage(Vector2f pointA, Vector2f pointB, Vector2f center, float radius) {
+        List<Vector2f> points = circleLinePoints(pointA, pointB, center, radius);
+        if (points.size() == 0) {
+            return null;
+        } else if (points.size() == 1) {
+            return points.get(0);
+        }
+        return new Vector2f((points.get(0).getX() + points.get(1).getX()) / 2.0f, (points.get(0).getY() + points.get(1).getY()) / 2.0f);
+    }
+
+    public static Vector3f rayCylinder(Vector3f pointA, Vector3f pointB, Vector3f position, float radius, float height) {
+        Vector2f a2 = new Vector2f(pointA.getX(), pointA.getZ());
+        Vector2f b2 = new Vector2f(pointB.getX(), pointB.getZ());
+        Vector2f intersectPoint = circleLineAverage(a2, b2, new Vector2f(position.getX(), position.getZ()), radius);
+
+        if (intersectPoint == null) {
+            return null;
+        }
+
+        float maxDistance = Vector2f.distance(a2, b2);
+        float distanceA = Vector2f.distance(a2, intersectPoint);
+        float distanceB = Vector2f.distance(b2, intersectPoint);
+
+        float distance = ((distanceA / maxDistance) + (1 - (distanceB / maxDistance))) / 2;
+        float intersectHeight = lerp(pointA.getY(), pointB.getY(), distance);
+
+        if (intersectHeight < position.getY() || intersectHeight > position.getY() + height) {
+            return null;
+        }
+
+        return new Vector3f(intersectPoint.getX(), intersectHeight, intersectPoint.getY());
+    }
+
 }

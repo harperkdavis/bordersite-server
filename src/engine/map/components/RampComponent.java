@@ -1,14 +1,17 @@
 package engine.map.components;
 
-import engine.game.PlayerMovement;
 import engine.map.collision.Collision;
+import engine.game.PlayerHandler;
 import engine.math.Mathf;
 import engine.math.Vector2f;
 import engine.math.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class RampComponent implements Component {
 
-    private final Vector3f stl, str, sbl, sbr, ntl, ntr, nbl, nbr;
+    private Vector3f stl, str, sbl, sbr, ntl, ntr, nbl, nbr;
     private Vector3f tnor, bnor, lnor, rnor, nnor, frontnormal, leftnormal, rightnormal;
     private Vector2f tl, tr, bl, br,
             etl, etr, ebl, ebr,
@@ -54,21 +57,28 @@ public class RampComponent implements Component {
 
         Vector3f midpoint = Vector3f.add(a, c).divide(2);
         this.str = Vector3f.add(sbl, Vector3f.subtract(midpoint, sbl).multiply(2));
+
+        for (int i = 0; i < direction; i++) {
+            Vector3f temp = stl.copy();
+            stl = sbl.copy();
+            sbl = sbr.copy();
+            sbr = str.copy();
+            str = temp;
+        }
         
         this.height = height;
-        this.direction = direction;
 
-        this.ntl = stl.plus(0, (direction == 0 || direction == 3) ? height : 0, 0);
-        this.ntr = str.plus(0, (direction == 1 || direction == 0) ? height : 0, 0);
-        this.nbr = sbr.plus(0, (direction == 2 || direction == 1) ? height : 0, 0);
-        this.nbl = sbl.plus(0, (direction == 3 || direction == 2) ? height : 0, 0);
+        this.ntl = stl.plus(0, height, 0);
+        this.ntr = str.plus(0, height, 0);
+        this.nbr = sbr.plus(0, 0, 0);
+        this.nbl = sbl.plus(0, 0, 0);
 
         tl = new Vector2f(stl.getX(), stl.getZ());
         tr = new Vector2f(str.getX(), str.getZ());
         bl = new Vector2f(sbl.getX(), sbl.getZ());
         br = new Vector2f(sbr.getX(), sbr.getZ());
 
-        float radius = PlayerMovement.PLAYER_RADIUS;
+        float radius = PlayerHandler.PLAYER_RADIUS;
         calculateSideNormals();
 
         etl = getExtended(bl, tl, tr, lnor, tnor, radius);
@@ -76,75 +86,22 @@ public class RampComponent implements Component {
         ebr = getExtended(tr, br, bl, rnor, bnor, radius);
         ebl = getExtended(br, bl, tl, bnor, lnor, radius);
 
-        switch(direction) {
-            case 0 -> {
-                etopl = new Vector2f(etl);
-                etopr = new Vector2f(etr);
-                ebtmr = new Vector2f(ebr);
-                ebtml = new Vector2f(ebl);
-                topl = new Vector2f(tl);
-                topr = new Vector2f(tr);
-                btmr = new Vector2f(br);
-                btml = new Vector2f(bl);
-            }
-            case 1 -> {
-                etopl = new Vector2f(etr);
-                etopr = new Vector2f(ebr);
-                ebtmr = new Vector2f(ebl);
-                ebtml = new Vector2f(etl);
-                topl = new Vector2f(tr);
-                topr = new Vector2f(br);
-                btmr = new Vector2f(bl);
-                btml = new Vector2f(tl);
-            }
-            case 2 -> {
-                etopl = new Vector2f(ebr);
-                etopr = new Vector2f(ebl);
-                ebtmr = new Vector2f(etl);
-                ebtml = new Vector2f(etr);
-                topl = new Vector2f(tr);
-                topr = new Vector2f(br);
-                btmr = new Vector2f(bl);
-                btml = new Vector2f(tl);
-            }
-            case 3 -> {
-                etopl = new Vector2f(ebl);
-                etopr = new Vector2f(etl);
-                ebtmr = new Vector2f(etr);
-                ebtml = new Vector2f(ebr);
-                topl = new Vector2f(bl);
-                topr = new Vector2f(tl);
-                btmr = new Vector2f(tr);
-                btml = new Vector2f(br);
-            }
-        }
+        etopl = new Vector2f(etl);
+        etopr = new Vector2f(etr);
+        ebtmr = new Vector2f(ebr);
+        ebtml = new Vector2f(ebl);
+        topl = new Vector2f(tl);
+        topr = new Vector2f(tr);
+        btmr = new Vector2f(br);
+        btml = new Vector2f(bl);
 
         calculateTopNormal();
 
         slope = Vector3f.dot(Vector3f.oneY(), nnor.normalized());
 
-        switch(direction) {
-            case 0 -> {
-                leftnormal = lnor;
-                frontnormal = tnor;
-                rightnormal = rnor;
-            }
-            case 1 -> {
-                leftnormal = tnor;
-                frontnormal = rnor;
-                rightnormal = bnor;
-            }
-            case 2 -> {
-                leftnormal = rnor;
-                frontnormal = bnor;
-                rightnormal = lnor;
-            }
-            case 3 -> {
-                leftnormal = bnor;
-                frontnormal = lnor;
-                rightnormal = tnor;
-            }
-        }
+        leftnormal = lnor;
+        frontnormal = tnor;
+        rightnormal = rnor;
 
         intopl = new Vector2f(etopl.getX() - frontnormal.getX() * radius * 2, etopl.getY() - frontnormal.getZ() * radius * 2);
         intopr = new Vector2f(etopr.getX() - frontnormal.getX() * radius * 2, etopr.getY() - frontnormal.getZ() * radius * 2);
@@ -204,7 +161,7 @@ public class RampComponent implements Component {
             return new Collision(position, velocity, false);
         }
 
-        float radius = PlayerMovement.PLAYER_RADIUS;
+        float radius = PlayerHandler.PLAYER_RADIUS;
 
         Vector3f newPosition = new Vector3f(position);
         Vector3f newVelocity = new Vector3f(velocity);
@@ -233,6 +190,77 @@ public class RampComponent implements Component {
         return new Collision(newPosition, velocity, isGrounded(newPosition));
     }
 
+    @Override
+    public Vector3f getRaycast(Vector3f start, Vector3f end) {
+
+        Vector3f tlr = raycastEdge(start, end, topl, topr);
+        Vector3f tbl = raycastSlantEdge(start, end, btml, topl);
+        Vector3f tbr = raycastSlantEdge(start, end, btmr, topr);
+
+        float updown = Math.abs(end.getY() - start.getY());
+        float downdist = ((Math.abs(stl.getY() - start.getY()) / updown) + (1 - (Math.abs(stl.getY() - end.getY())/ updown))) / 2;
+        Vector3f down = Vector3f.lerp(start, end, downdist);
+
+        List<Vector3f> intersects = new ArrayList<>();
+        if (Math.abs(down.getY() - stl.getY()) < 0.01f && (Mathf.pointTriangle(new Vector2f(down.getX(), down.getZ()), tl, bl, br) || Mathf.pointTriangle(new Vector2f(down.getX(), down.getZ()), tl, br, tr))) {
+            intersects.add(down);
+        }
+        if (tlr != null) {
+            intersects.add(tlr);
+        }
+        if (tbl != null) {
+            intersects.add(tbl);
+        }
+        if (tbr != null) {
+            intersects.add(tbr);
+        }
+
+        Vector3f intersect = null;
+        float minDistance = Float.MAX_VALUE;
+        for (Vector3f inter : intersects) {
+            float distance = (float) Math.sqrt((Math.pow(inter.getX() - start.getX(), 2) + Math.pow(inter.getY() - start.getY(), 2) + Math.pow(inter.getZ() - start.getZ(), 2)));
+            if (distance < minDistance) {
+                intersect = inter.copy();
+                minDistance = distance;
+            }
+        }
+        return intersect;
+    }
+
+    private Vector3f raycastEdge(Vector3f s, Vector3f e, Vector2f a, Vector2f b) {
+        if (!Mathf.intersect(s.getX(), s.getZ(), e.getX(), e.getZ(), a.getX(), a.getY(), b.getX(), b.getY())) {
+            return null;
+        }
+        Vector2f intersect = Mathf.intersectPoint(s.getX(), s.getZ(), e.getX(), e.getZ(), a.getX(), a.getY(), b.getX(), b.getY());
+        float maxDistance = Mathf.distance(s.getX(), s.getZ(), e.getX(), e.getZ());
+        float distance = Mathf.distance(s.getX(), s.getZ(), intersect.getX(), intersect.getY());
+        float y = Mathf.lerp(s.getY(), e.getY(), distance / maxDistance);
+        if (y > stl.getY() && y < ntl.getY()) {
+            return new Vector3f(intersect.getX(), y, intersect.getY());
+        }
+        return null;
+    }
+
+    private Vector3f raycastSlantEdge(Vector3f s, Vector3f e, Vector2f a, Vector2f b) {
+        if (!Mathf.intersect(s.getX(), s.getZ(), e.getX(), e.getZ(), a.getX(), a.getY(), b.getX(), b.getY())) {
+            return null;
+        }
+        Vector2f intersect = Mathf.intersectPoint(s.getX(), s.getZ(), e.getX(), e.getZ(), a.getX(), a.getY(), b.getX(), b.getY());
+        float maxDistance = Mathf.distance(s.getX(), s.getZ(), e.getX(), e.getZ());
+        float distance = Mathf.distance(s.getX(), s.getZ(), intersect.getX(), intersect.getY());
+        float y = Mathf.lerp(s.getY(), e.getY(), distance / maxDistance);
+
+        float sideDistance = Mathf.distance(a.getX(), a.getY(), b.getX(), b.getY());
+        float sideA = Mathf.distance(a.getX(), a.getY(), intersect.getX(), intersect.getY());
+        float sideB = Mathf.distance(b.getX(), b.getY(), intersect.getX(), intersect.getY());
+        float up = (sideA / sideDistance + (1 - sideB / sideDistance)) / 2;
+        float heightAt = Mathf.lerp(stl.getY(), ntl.getY(), up);
+        if (y > stl.getY() && y < heightAt) {
+            return new Vector3f(intersect.getX(), y, intersect.getY());
+        }
+        return null;
+    }
+
     private boolean isWithinBounds(Vector2f position) {
         return Mathf.pointTriangle(position, setl, sebl, sebr) || Mathf.pointTriangle(position, setl, sebr, setr);
     }
@@ -257,15 +285,17 @@ public class RampComponent implements Component {
         float distance1 = Mathf.pointLine(pos.getX(), pos.getZ(), intopl.getX(), intopl.getY(), intopr.getX(), intopr.getY());
         float distance2 = Mathf.pointLine(pos.getX(), pos.getZ(), ebtml.getX(), ebtml.getY(), ebtmr.getX(), ebtmr.getY());
         float distance = ((distance2 / crossMagnitude) + (1 - distance1 / crossMagnitude)) / 2;
-    return Math.min(Mathf.lerp(stl.getY(), stl.getY() + height + PlayerMovement.PLAYER_RADIUS, distance), stl.getY() + height + 0.1f);
+    return Math.min(Mathf.lerp(stl.getY(), stl.getY() + height + PlayerHandler.PLAYER_RADIUS, distance), stl.getY() + height + 0.1f);
     }
 
     private Vector3f sideCollision(Vector3f pos, Vector2f a, Vector2f b, Vector2f c, Vector2f d, Vector3f normal, boolean checkHeight) {
-        if (Mathf.pointTrapezoid(new Vector2f(pos.getX(), pos.getZ()), a, b, c, d) && (!checkHeight || (pos.getY() < getHeightAt(pos) + PlayerMovement.PLAYER_RADIUS && pos.getY() < stl.getY() + height))) {
+        if (Mathf.pointTrapezoid(new Vector2f(pos.getX(), pos.getZ()), a, b, c, d) && (!checkHeight || (pos.getY() < getHeightAt(pos) + PlayerHandler.PLAYER_RADIUS && pos.getY() < stl.getY() + height))) {
             float distance = Mathf.pointLine(pos.getX(), pos.getZ(), c.getX(), c.getY(), d.getX(), d.getY()) * 1.05f;
             return new Vector3f(pos.getX() + normal.getX() * distance, pos.getY(), pos.getZ() + normal.getZ() * distance);
         }
         return pos;
     }
+
+
 
 }

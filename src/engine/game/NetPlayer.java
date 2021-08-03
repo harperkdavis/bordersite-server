@@ -81,7 +81,9 @@ public class NetPlayer {
     }
 
     public void setMostRecentSnapshot(InputState mostRecentSnapshot) {
-        this.mostRecentSnapshot = mostRecentSnapshot;
+        if (mostRecentSnapshot != null) {
+            this.mostRecentSnapshot = mostRecentSnapshot;
+        }
     }
 
     public void setOrAddInput(int index, InputState inputs) {
@@ -112,26 +114,35 @@ public class NetPlayer {
 
     public boolean isInput(String input, int subtick) {
         if (subtick < tickInputs.size()) {
+            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
+                return mostRecentSnapshot.getKeys().contains(input);
+            }
             return tickInputs.get(subtick).getKeys().contains(input);
         } else {
-            return false;
+            return mostRecentSnapshot.getKeys().contains(input);
         }
     }
 
     public boolean isInputDown(String input, int subtick) {
         if (subtick < tickInputs.size()) {
+            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
+                return mostRecentSnapshot.getKeys().contains(input);
+            }
             if (subtick == 0) {
                 return !prevTickInput.getKeys().contains(input) && tickInputs.get(subtick).getKeys().contains(input);
             } else {
                 return !tickInputs.get(subtick - 1).getKeys().contains(input) && tickInputs.get(subtick).getKeys().contains(input);
             }
         } else {
-            return false;
+            return mostRecentSnapshot.getKeys().contains(input);
         }
     }
 
     public boolean isInputUp(String input, int subtick) {
         if (subtick < tickInputs.size()) {
+            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
+                return mostRecentSnapshot.getKeys().contains(input);
+            }
             if (subtick == 0) {
                 return prevTickInput.getKeys().contains(input) && !tickInputs.get(subtick).getKeys().contains(input);
             } else {
@@ -144,9 +155,23 @@ public class NetPlayer {
 
     public Vector3f getCameraRotation(int subtick) {
         if (subtick < tickInputs.size()) {
+            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
+                return mostRecentSnapshot.getRotation();
+            }
             return tickInputs.get(subtick).getRotation();
         } else {
-            return Vector3f.zero();
+            return mostRecentSnapshot.getRotation();
+        }
+    }
+
+    public Vector3f getForward(int subtick) {
+        if (subtick < tickInputs.size()) {
+            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
+                return mostRecentSnapshot.getForward();
+            }
+            return tickInputs.get(subtick).getForward();
+        } else {
+            return mostRecentSnapshot.getForward();
         }
     }
 }

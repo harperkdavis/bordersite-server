@@ -89,4 +89,11 @@ public class MapLevel {
 
     }
 
+    public static Vector3f getRedSpawn() {
+        return redSpawn;
+    }
+
+    public static Vector3f getBlueSpawn() {
+        return blueSpawn;
+    }
 }
