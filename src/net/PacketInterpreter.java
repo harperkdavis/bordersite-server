@@ -1,21 +1,15 @@
 package net;
 
 import com.esotericsoftware.kryonet.Connection;
-import engine.game.GameHandler;
 import engine.game.InputState;
 import engine.game.NetPlayer;
 import engine.game.PlayerHandler;
-import engine.map.MapLevel;
-import engine.math.Vector3f;
 import net.packets.Packet;
 import net.packets.client.*;
-import net.packets.server.ConnectionReceivedPacket;
-import net.packets.server.PingRequestPacket;
-import net.packets.server.PlayerSpawnPacket;
-import net.packets.server.WorldSpawnPacket;
+import net.packets.server.*;
 
 import java.net.InetSocketAddress;
-import java.util.Random;
+import java.util.UUID;
 
 public class PacketInterpreter {
 
@@ -24,13 +18,24 @@ public class PacketInterpreter {
         if (packet instanceof ConnectPacket) {
             System.out.println("[PACKET] Incoming packet with type: " + packet.getPacketType());
             packet.printData();
-            ConnectPacket crp = (ConnectPacket) packet;
-            InetSocketAddress address = connection.getRemoteAddressTCP();
-            NetPlayer player = ServerHandler.addPlayer(address.getAddress().toString(), address.getPort(), connection.getID(), crp.getUsername());
-            System.out.println(player.getUsername() + " has joined the server!");
-            ServerHandler.broadcastMessage(player.getUsername() + " has joined the server", 1.0f, 1.0f, 0.9f);
-            connection.sendUDP(new PingRequestPacket());
-            connection.sendTCP(new ConnectionReceivedPacket(player.getPlayerId()));
+            ServerHandler.VerificationResult verification = null;
+            try {
+                verification = ServerHandler.verify(((ConnectPacket) packet).getSessionID());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            if (verification == null) {
+                connection.sendTCP(new ConnectionDeniedPacket("Unknown error during verification. The authentication servers may be down."));
+            } else if (verification.isVerified()) {
+                InetSocketAddress address = connection.getRemoteAddressTCP();
+                NetPlayer player = ServerHandler.addPlayer(address.getAddress().toString(), address.getPort(), connection.getID(), verification.getUsername(), verification.getUuid());
+                System.out.println(player.getUsername() + " has joined the server!");
+                ServerHandler.broadcastMessage(player.getUsername() + " has joined the server", 1.0f, 1.0f, 0.9f);
+                connection.sendUDP(new PingRequestPacket());
+                connection.sendTCP(new ConnectionAcceptedPacket(player.getPlayerId()));
+            } else {
+                connection.sendTCP(new ConnectionDeniedPacket(verification.getReason()));
+            }
         } else if (packet instanceof ChatRequestPacket) {
             System.out.println("[PACKET] Incoming packet with type: " + packet.getPacketType());
             packet.printData();
@@ -77,7 +82,7 @@ public class PacketInterpreter {
         int team = packet.getTeam();
         sender.getPlayer().setTeam(team);
 
-        PlayerHandler.respawn(sender.getPlayer(), ServerTick.getSubtick());
+        PlayerHandler.respawn(sender, ServerTick.getSubtick());
 
         ServerHandler.getServer().sendToAllExceptTCP(connection.getID(), new PlayerSpawnPacket(sender.getPlayerId(), sender.getUuid(), sender.getUsername(), team));
         connection.sendTCP(new WorldSpawnPacket(ServerTick.getTick(), team, ServerHandler.getPlayerList()));

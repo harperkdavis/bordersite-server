@@ -21,8 +21,8 @@ public class NetPlayer {
     private InputState prevTickInput = new InputState();
     private InputState mostRecentSnapshot = new InputState();
 
-    public NetPlayer(String ipAddress, int port, int playerId, int kryoId, String username) {
-        player = new Player(playerId, username);
+    public NetPlayer(String ipAddress, int port, int playerId, int kryoId, String username, String uuid) {
+        player = new Player(playerId, uuid, username);
         this.kryoId = kryoId;
         this.ipAddress = ipAddress;
         this.port = port;
@@ -125,12 +125,15 @@ public class NetPlayer {
 
     public boolean isInputDown(String input, int subtick) {
         if (subtick < tickInputs.size()) {
-            if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
-                return mostRecentSnapshot.getKeys().contains(input);
+            if ((tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null)) {
+                return false;
             }
             if (subtick == 0) {
                 return !prevTickInput.getKeys().contains(input) && tickInputs.get(subtick).getKeys().contains(input);
             } else {
+                if ((tickInputs.get(subtick - 1) == null || tickInputs.get(subtick - 1).getKeys() == null)) {
+                    return false;
+                }
                 return !tickInputs.get(subtick - 1).getKeys().contains(input) && tickInputs.get(subtick).getKeys().contains(input);
             }
         } else {
@@ -141,11 +144,14 @@ public class NetPlayer {
     public boolean isInputUp(String input, int subtick) {
         if (subtick < tickInputs.size()) {
             if (tickInputs.get(subtick) == null || tickInputs.get(subtick).getKeys() == null) {
-                return mostRecentSnapshot.getKeys().contains(input);
+                return false;
             }
             if (subtick == 0) {
                 return prevTickInput.getKeys().contains(input) && !tickInputs.get(subtick).getKeys().contains(input);
             } else {
+                if ((tickInputs.get(subtick - 1) == null || tickInputs.get(subtick - 1).getKeys() == null)) {
+                    return false;
+                }
                 return tickInputs.get(subtick - 1).getKeys().contains(input) && !tickInputs.get(subtick).getKeys().contains(input);
             }
         } else {

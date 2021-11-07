@@ -5,15 +5,30 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.esotericsoftware.minlog.Log;
+import com.google.gson.Gson;
+import com.sun.net.httpserver.HttpServer;
 import engine.game.*;
 import engine.math.Vector2f;
 import engine.math.Vector3f;
+import net.http.MotdHandler;
+import net.http.RootHandler;
 import net.packets.Packet;
 import net.packets.client.*;
 import net.packets.event.*;
 import net.packets.server.*;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,13 +44,39 @@ public class ServerHandler {
     private static Server server;
     private static int nextPlayerId = 0;
 
+    private static HttpServer httpServer;
+    private static HttpClient httpClient;
+    private static Map<String, ?> serverInfo = new HashMap<>();
+
     public static final Vector3f DARK_RED_COLOR = new Vector3f(175.0f / 256.0f, 12.0f / 256.0f, 21.0f / 256.0f);
     public static final Vector3f DARK_BLUE_COLOR = new Vector3f(13.0f / 256.0f, 53.0f / 256.0f, 120.0f / 256.0f);
     public static final Vector3f RED_COLOR = new Vector3f(210.0f / 256.0f, 41.0f / 256.0f, 45.0f / 256.0f);
     public static final Vector3f BLUE_COLOR = new Vector3f(23.0f / 256.0f, 97.0f / 256.0f, 176.0f / 256.0f);
 
+    @SuppressWarnings("unchecked")
     public static void start() {
         Log.set(Log.LEVEL_TRACE);
+
+        try {
+            httpServer = HttpServer.create(new InetSocketAddress(27333), 0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        httpServer.createContext("/", new RootHandler());
+        httpServer.createContext("/motd", new MotdHandler());
+        httpServer.setExecutor(null);
+        httpServer.start();
+
+        httpClient = HttpClient.newHttpClient();
+
+        Gson gson = new Gson();
+        try {
+            Reader reader = Files.newBufferedReader(Paths.get("data/server.json"));
+            serverInfo = (Map<String, ?>) gson.fromJson(reader, Map.class);
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
 
         server = new Server();
         server.start();
@@ -59,7 +100,8 @@ public class ServerHandler {
 
         kryo.register(Packet.class);
         kryo.register(ConnectPacket.class);
-        kryo.register(ConnectionReceivedPacket.class);
+        kryo.register(ConnectionAcceptedPacket.class);
+        kryo.register(ConnectionDeniedPacket.class);
 
         kryo.register(PingRequestPacket.class);
         kryo.register(PongPacket.class);
@@ -108,11 +150,74 @@ public class ServerHandler {
                     System.out.println("[INFO] Unregistered player disconnected: " + connection.getRemoteAddressTCP().toString());
                 }
             }
+
         });
     }
 
-    public static NetPlayer addPlayer(String ip, int port, int kryoId, String username) {
-        NetPlayer newPlayer = new NetPlayer(ip, port, nextPlayerId, kryoId, username);
+    public static class VerificationResult {
+        private final boolean isVerified;
+        private final String reason;
+
+        private final String username, uuid;
+
+        public VerificationResult(boolean isVerified, String reason) {
+            this(isVerified, reason, null, null);
+        }
+
+        public VerificationResult(boolean isVerified, String reason, String username, String uuid) {
+            this.isVerified = isVerified;
+            this.reason = reason;
+            this.username = username;
+            this.uuid = uuid;
+        }
+
+        public boolean isVerified() {
+            return isVerified;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getUuid() {
+            return uuid;
+        }
+    }
+
+    public static VerificationResult verify(String sessionID) throws IOException, InterruptedException {
+        String body = "{ \"sessionID\": \"" + sessionID + "\" }";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:7777/verify"))
+                .timeout(Duration.ofSeconds(15))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        Gson gson = new Gson();
+        System.out.println(response.body());
+        Map<?, ?> map = gson.fromJson(response.body(), Map.class);
+
+        if (map.get("result").equals("success")) {
+            return new VerificationResult(true, "Successful.", (String) map.get("username"), (String) map.get("uuid"));
+        } else if (map.get("result").equals("invalid")) {
+            return new VerificationResult(false, "Invalid Session ID. Try relaunching your game.");
+        } else if (map.get("result").equals("expired")) {
+            return new VerificationResult(false, "Session ID Expired. Try relaunching your game.");
+        } else if (map.get("result").equals("banned")) {
+            return new VerificationResult(false, "Your account has been banned.");
+        }
+        return new VerificationResult(false, "Unknown error during verification. The authentication servers may be down.");
+    }
+
+    public static NetPlayer addPlayer(String ip, int port, int kryoId, String username, String uuid) {
+        NetPlayer newPlayer = new NetPlayer(ip, port, nextPlayerId, kryoId, username, uuid);
         players.put(nextPlayerId, newPlayer);
         nextPlayerId ++;
         return newPlayer;
@@ -235,5 +340,45 @@ public class ServerHandler {
 
     public static Map<Integer, NetPlayer> getPlayerMap() {
         return players;
+    }
+
+    public static Map<String, ?> getServerInfo() {
+        return serverInfo;
+    }
+
+    public static void parseHttpQuery(String query, Map<String, Object> parameters) throws UnsupportedEncodingException {
+        if (query != null) {
+            String[] pairs = query.split("[&]");
+            for (String pair : pairs) {
+                String[] param = pair.split("[=]");
+                String key = null;
+                String value = null;
+                if (param.length > 0) {
+                    key = URLDecoder.decode(param[0],
+                            System.getProperty("file.encoding"));
+                }
+
+                if (param.length > 1) {
+                    value = URLDecoder.decode(param[1],
+                            System.getProperty("file.encoding"));
+                }
+
+                if (parameters.containsKey(key)) {
+                    Object obj = parameters.get(key);
+                    if (obj instanceof List<?>) {
+                        List<String> values = (List<String>) obj;
+                        values.add(value);
+
+                    } else if (obj instanceof String) {
+                        List<String> values = new ArrayList<String>();
+                        values.add((String) obj);
+                        values.add(value);
+                        parameters.put(key, values);
+                    }
+                } else {
+                    parameters.put(key, value);
+                }
+            }
+        }
     }
 }

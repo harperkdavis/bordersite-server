@@ -2,17 +2,17 @@ package net.packets.server;
 
 import net.packets.Packet;
 
-public class ConnectionReceivedPacket extends Packet {
+public class ConnectionAcceptedPacket extends Packet {
 
     private final int playerId;
 
-    public ConnectionReceivedPacket(int playerId) {
+    public ConnectionAcceptedPacket(int playerId) {
         super(2);
         this.playerId = playerId;
     }
 
 
-    public ConnectionReceivedPacket() {
+    public ConnectionAcceptedPacket() {
         super(2);
         this.playerId = 0;
     }

@@ -25,7 +25,7 @@ public class PlayerHandler {
         if (netPlayer.getPlayer().isDead()) {
             netPlayer.getPlayer().setDeathTimer(netPlayer.getPlayer().getDeathTimer() - 2.0f / 1000.0f);
             if (netPlayer.getPlayer().getDeathTimer() <= 0) {
-                respawn(netPlayer.getPlayer(), subtick);
+                respawn(netPlayer, subtick);
             }
             return;
         }
@@ -114,10 +114,10 @@ public class PlayerHandler {
         }
     }
 
-    public static void respawn(Player player, int subtick) {
-        int team = player.getTeam();
-        player.respawn((team == 0 ? MapLevel.getRedSpawn() : MapLevel.getBlueSpawn()).plus(new Random().nextFloat() * 8 - 4, 0, new Random().nextFloat() * 8 - 4), team == 0 ? new Vector3f(0, -90, 0) : new Vector3f(0, 90, 0));
-        RespawnEvent respawnEvent = new RespawnEvent(player, subtick);
+    public static void respawn(NetPlayer player, int subtick) {
+        int team = player.getPlayer().getTeam();
+        player.getPlayer().respawn((team == 0 ? MapLevel.getRedSpawn() : MapLevel.getBlueSpawn()).plus(new Random().nextFloat() * 8 - 4, 0, new Random().nextFloat() * 8 - 4), team == 0 ? new Vector3f(0, -90, 0) : new Vector3f(0, 90, 0));
+        RespawnEvent respawnEvent = new RespawnEvent(player.getPlayer(), subtick);
         ServerHandler.addEvent(respawnEvent);
     }
 

@@ -19,16 +19,15 @@ public class MapLevel {
 
     public static List<Component> components = new ArrayList<>();
     private static Vector3f redSpawn, blueSpawn;
-    private static final String MAP = "atnitz";
 
     @SuppressWarnings("unchecked")
-    public static void loadMap() {
+    public static void loadMap(String map) {
         components.clear();
 
         Gson gson = new Gson();
         Map<?, ?> layoutMap = new HashMap<>();
         try {
-            Reader reader = Files.newBufferedReader(Paths.get("resources/maps/" + MAP + "/layout.json"));
+            Reader reader = Files.newBufferedReader(Paths.get("data/maps/" + map + "/layout.json"));
             layoutMap = gson.fromJson(reader, Map.class);
         } catch(IOException e) {
             e.printStackTrace();
@@ -75,7 +74,7 @@ public class MapLevel {
 
         Map<?, ?> multiplayerMap = new HashMap<>();
         try {
-            Reader reader = Files.newBufferedReader(Paths.get("resources/maps/" + MAP + "/multiplayer.json"));
+            Reader reader = Files.newBufferedReader(Paths.get("data/maps/" + map + "/multiplayer.json"));
             multiplayerMap = gson.fromJson(reader, Map.class);
         } catch(IOException e) {
             e.printStackTrace();

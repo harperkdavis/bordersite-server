@@ -18,6 +18,10 @@ public class Main {
     private static ServerTick serverTick;
     private static final float DELTA_TIME = 2.0f / 1000.0f;
 
+    public static final int MAJOR_VERSION = 0;
+    public static final int MINOR_VERSION = 2;
+    public static final int PATCH_VERSION = 0;
+
     public static void main(String[] args) {
         System.out.println("[INFO] Starting server...");
 
@@ -44,7 +48,7 @@ public class Main {
         Log.set(Log.LEVEL_TRACE);
 
         ServerHandler.start();
-        MapLevel.loadMap();
+        MapLevel.loadMap((String) ServerHandler.getServerInfo().get("map"));
 
         start();
 
