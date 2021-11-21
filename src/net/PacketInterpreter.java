@@ -4,6 +4,10 @@ import com.esotericsoftware.kryonet.Connection;
 import engine.game.InputState;
 import engine.game.NetPlayer;
 import engine.game.PlayerHandler;
+import engine.math.Vector2f;
+import engine.math.Vector3f;
+import main.ConsoleReader;
+import java.util.List;
 import net.packets.Packet;
 import net.packets.client.*;
 import net.packets.server.*;
@@ -11,6 +15,7 @@ import net.packets.server.*;
 import java.net.InetSocketAddress;
 import java.util.UUID;
 
+@SuppressWarnings("unchecked")
 public class PacketInterpreter {
 
     public static void interpret(Connection connection, Packet packet) {
@@ -27,12 +32,16 @@ public class PacketInterpreter {
             if (verification == null) {
                 connection.sendTCP(new ConnectionDeniedPacket("Unknown error during verification. The authentication servers may be down."));
             } else if (verification.isVerified()) {
-                InetSocketAddress address = connection.getRemoteAddressTCP();
-                NetPlayer player = ServerHandler.addPlayer(address.getAddress().toString(), address.getPort(), connection.getID(), verification.getUsername(), verification.getUuid());
-                System.out.println(player.getUsername() + " has joined the server!");
-                ServerHandler.broadcastMessage(player.getUsername() + " has joined the server", 1.0f, 1.0f, 0.9f);
-                connection.sendUDP(new PingRequestPacket());
-                connection.sendTCP(new ConnectionAcceptedPacket(player.getPlayerId()));
+                if (ServerHandler.getPlayer(verification.getUuid()) != null) {
+                    connection.sendTCP(new ConnectionDeniedPacket("Player is already on server!"));
+                } else {
+                    InetSocketAddress address = connection.getRemoteAddressTCP();
+                    NetPlayer player = ServerHandler.addPlayer(address.getAddress().toString(), address.getPort(), connection.getID(), verification.getUsername(), verification.getUuid());
+                    System.out.println("[INFO] " + player.getUsername() + " has joined the server!");
+                    ServerHandler.broadcastMessage(player.getUsername() + " has joined the server", 1.0f, 1.0f, 0.9f);
+                    connection.sendUDP(new PingRequestPacket());
+                    connection.sendTCP(new ConnectionAcceptedPacket(player.getPlayerId()));
+                }
             } else {
                 connection.sendTCP(new ConnectionDeniedPacket(verification.getReason()));
             }
@@ -53,7 +62,7 @@ public class PacketInterpreter {
     }
 
     private static void handleChatRequestPacket(Connection connection, ChatRequestPacket packet) {
-        if (packet.getMessage().equals("")) {
+        if (packet.getMessage().length() == 0) {
             return;
         }
         NetPlayer sender = ServerHandler.getPlayerKryoId(connection.getID());
@@ -62,12 +71,26 @@ public class PacketInterpreter {
             System.err.println("Ip: " + connection.getRemoteAddressTCP().toString());
             return;
         }
-        if (sender.getPlayer().getTeam() == 0) {
-            String chatMessage = "[TRIPOROV " + sender.getUsername() + "] " + packet.getMessage();
-            ServerHandler.broadcastMessage(chatMessage, ServerHandler.RED_COLOR);
+        if (packet.getMessage().charAt(0) == '/') {
+            if (packet.getMessage().length() == 1) {
+                return;
+            }
+            int level = 1;
+            if (((List<String>) ServerHandler.getServerInfo().get("admins")).contains(sender.getUsername())) {
+                level = 3;
+            } else if (((List<String>) ServerHandler.getServerInfo().get("mods")).contains(sender.getUsername())) {
+                level = 2;
+            }
+            String response = ConsoleReader.execute(packet.getMessage().substring(1), level, sender);
+            connection.sendTCP(new ChatPacket(response, 0.9f, 0.9f, 0.9f));
         } else {
-            String chatMessage = "[KISELEV " + sender.getUsername() + "] " + packet.getMessage();
-            ServerHandler.broadcastMessage(chatMessage, ServerHandler.BLUE_COLOR);
+            if (sender.getPlayer().getTeam() == 0) {
+                String chatMessage = "[TRIPOROV " + sender.getUsername() + "] " + packet.getMessage();
+                ServerHandler.broadcastMessage(chatMessage, ServerHandler.RED_COLOR);
+            } else {
+                String chatMessage = "[KISELEV " + sender.getUsername() + "] " + packet.getMessage();
+                ServerHandler.broadcastMessage(chatMessage, ServerHandler.BLUE_COLOR);
+            }
         }
     }
 

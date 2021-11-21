@@ -98,6 +98,10 @@ public class Player {
         return grounded;
     }
 
+    public void setGrounded(boolean grounded) {
+        this.grounded = grounded;
+    }
+
     public boolean isCrouching() {
         return crouching;
     }
@@ -120,6 +124,18 @@ public class Player {
 
     public float getVelZ() {
         return velZ;
+    }
+
+    public void setVelX(float velX) {
+        this.velX = velX;
+    }
+
+    public void setVelY(float velY) {
+        this.velY = velY;
+    }
+
+    public void setVelZ(float velZ) {
+        this.velZ = velZ;
     }
 
     public float getSprintModifier() {
@@ -305,7 +321,7 @@ public class Player {
     }
 
     public Player copy() {
-        Player copy = new Player(playerId, username, uuid);
+        Player copy = new Player(playerId, uuid, username);
         copy.playerId = playerId;
         copy.username = username;
 

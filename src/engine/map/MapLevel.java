@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import engine.map.components.BlockComponent;
 import engine.map.components.Component;
 import engine.map.components.RampComponent;
+import engine.math.Vector2f;
 import engine.math.Vector3f;
+import engine.util.JsonHandler;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -25,66 +27,55 @@ public class MapLevel {
         components.clear();
 
         Gson gson = new Gson();
-        Map<?, ?> layoutMap = new HashMap<>();
+        Map<?, ?> mapData = new HashMap<>();
         try {
-            Reader reader = Files.newBufferedReader(Paths.get("data/maps/" + map + "/layout.json"));
-            layoutMap = gson.fromJson(reader, Map.class);
+            Reader reader = Files.newBufferedReader(Paths.get("data/maps/" + map + "/map.json"));
+            mapData = gson.fromJson(reader, Map.class);
         } catch(IOException e) {
             e.printStackTrace();
         }
 
         try {
-            List<Map<String, ?>> componentsList = (List<Map<String, ?>>) layoutMap.get("components");
+            List<Map<String, ?>> componentsList = ((Map<String, List<Map<String, ?>>>) mapData.get("layout")).get("components");
             for (Map<String, ?> component : componentsList) {
+
                 String type = (String) component.get("type");
-                ArrayList<Double> doubleVal = (ArrayList<Double>) component.get("values");
-                ArrayList<Float> val = new ArrayList<>();
-                for (Double d : doubleVal) {
-                    val.add(d.floatValue());
-                }
-                if (type.equals("block")) {
+                String materialName = (String) component.get("material");
+                boolean visible = (Boolean) component.get("visible");
 
-                    Vector3f a = new Vector3f(val.get(0), val.get(1), val.get(2));
-                    Vector3f b = new Vector3f(val.get(3), val.get(4), val.get(5));
-                    Vector3f c = new Vector3f(val.get(6), val.get(7), val.get(8));
+                if (type.equals("block") || type.equals("ramp")) {
 
-                    float height = val.get(9), tiling = val.get(10);
-                    boolean mesh = (val.get(11) == 1), collision = (val.get(12) == 1);
+                    Map<String, ?> colliderData = (Map<String, ?>) component.get("colliderData");
 
-                    BlockComponent newComponent = new BlockComponent(a, b, c, height, tiling, mesh, collision);
-                    components.add(newComponent);
+                    Vector3f a = JsonHandler.getVector3f(colliderData, "a");
+                    Vector3f b = JsonHandler.getVector3f(colliderData, "b");
+                    Vector3f c = JsonHandler.getVector3f(colliderData, "c");
+                    float height = ((Double) colliderData.get("height")).floatValue(), tiling = ((Double) colliderData.get("tiling")).floatValue();
+                    boolean collidable = (Boolean) colliderData.get("collidable");
 
-                } else if (type.equals("ramp")) {
+                    if (type.equals("block")) {
 
-                    Vector3f a = new Vector3f(val.get(0), val.get(1), val.get(2));
-                    Vector3f b = new Vector3f(val.get(3), val.get(4), val.get(5));
-                    Vector3f c = new Vector3f(val.get(6), val.get(7), val.get(8));
+                        BlockComponent newComponent = new BlockComponent(a, b, c, height, tiling, visible, collidable);
+                        components.add(newComponent);
 
-                    float height = val.get(9), tiling = val.get(10);
-                    boolean mesh = (val.get(11) == 1), collision = (val.get(12) == 1);
-                    int direction = val.get(13).intValue();
+                    } else {
 
-                    RampComponent newComponent = new RampComponent(a, b, c, height, direction, tiling, mesh, collision);
-                    components.add(newComponent);
+                        int direction = ((Double) colliderData.get("direction")).intValue();
+
+                        RampComponent newComponent = new RampComponent(a, b, c, height, direction, tiling, visible, collidable);
+                        components.add(newComponent);
+
+                    }
                 }
             }
+
+            Map<String, ?> multiplayer = (Map<String, ?>) mapData.get("multiplayer");
+            redSpawn = JsonHandler.getVector3f(multiplayer, "redSpawn");
+            blueSpawn = JsonHandler.getVector3f(multiplayer, "blueSpawn");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        Map<?, ?> multiplayerMap = new HashMap<>();
-        try {
-            Reader reader = Files.newBufferedReader(Paths.get("data/maps/" + map + "/multiplayer.json"));
-            multiplayerMap = gson.fromJson(reader, Map.class);
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
-
-        ArrayList<Double> redSpawnArray = (ArrayList<Double>) multiplayerMap.get("red_spawn");
-        ArrayList<Double> blueSpawnArray = (ArrayList<Double>) multiplayerMap.get("blue_spawn");
-
-        redSpawn = new Vector3f(redSpawnArray.get(0).floatValue(), redSpawnArray.get(1).floatValue(), redSpawnArray.get(2).floatValue());
-        blueSpawn = new Vector3f(blueSpawnArray.get(0).floatValue(), blueSpawnArray.get(1).floatValue(), blueSpawnArray.get(2).floatValue());
 
     }
 

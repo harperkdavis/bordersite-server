@@ -2,5 +2,7 @@
   "name": "Bordersite Server",
   "host": "anonymous",
   "description": "Pretzel",
-  "map": "atnitz"
+  "map": "sakrev",
+  "mods": [],
+  "admins": ["Kwipp"]
 }

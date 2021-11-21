@@ -294,6 +294,15 @@ public class ServerHandler {
         return null;
     }
 
+    public static NetPlayer getPlayerByName(String name) {
+        for (NetPlayer p : players.values()) {
+            if (p.getUsername().equals(name)) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     public static List<Player> getPlayerList() {
         List<Player> playerList = new ArrayList<>();
         for (NetPlayer np : players.values()) {
